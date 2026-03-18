@@ -3,62 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Check Follower Roblox</title>
+  <title>Check Follower Roblox - Thiện Tool</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
+      background: #0d1117;
+      color: #c9d1d9;
       margin: 0;
-      padding: 30px;
+      padding: 40px 20px;
       text-align: center;
     }
     h1 {
-      color: #00ccff;
+      color: #58a6ff;
+      margin-bottom: 30px;
     }
     .container {
       max-width: 500px;
       margin: 0 auto;
-      background: #1a1a1a;
+      background: #161b22;
       padding: 30px;
       border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0,200,255,0.2);
+      box-shadow: 0 4px 20px rgba(88,166,255,0.15);
+      border: 1px solid #30363d;
     }
     input[type="text"] {
       width: 100%;
-      padding: 12px;
-      margin: 15px 0;
-      border: 2px solid #444;
+      padding: 14px;
+      margin: 15px 0 20px;
+      border: 1px solid #30363d;
       border-radius: 6px;
-      background: #222;
-      color: white;
+      background: #0d1117;
+      color: #c9d1d9;
       font-size: 16px;
+      box-sizing: border-box;
     }
     button {
-      padding: 12px 30px;
+      padding: 12px 40px;
       font-size: 16px;
-      background: #00ccff;
-      color: black;
+      background: #238636;
+      color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
-      transition: 0.3s;
+      transition: background 0.2s;
     }
     button:hover {
-      background: #00aaff;
+      background: #2ea043;
     }
     #result {
-      margin-top: 25px;
-      font-size: 1.3em;
-      min-height: 60px;
-    }
-    .error {
-      color: #ff5555;
-    }
-    .info {
-      color: #aaa;
-      font-size: 0.9em;
       margin-top: 30px;
+      font-size: 1.2em;
+      line-height: 1.6;
+      min-height: 100px;
+    }
+    .success { color: #3fb950; }
+    .error { color: #f85149; font-weight: bold; }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #58a6ff;
+      border-top: 3px solid transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .info {
+      margin-top: 40px;
+      color: #8b949e;
+      font-size: 0.9em;
     }
   </style>
 </head>
@@ -67,90 +81,109 @@
   <div class="container">
     <h1>Check Số Follower Roblox</h1>
     
-    <input type="text" id="input" placeholder="Nhập Username hoặc UserID..." />
-    <button onclick="checkFollower()">Kiểm tra</button>
+    <input type="text" id="input" placeholder="Nhập Username hoặc UserID (ví dụ: Builderman hoặc 1)" />
+    <button onclick="checkFollower()">Kiểm tra ngay</button>
     
     <div id="result"></div>
     
     <div class="info">
-      Hỗ trợ cả Username và UserID • Dùng API công khai của Roblox • Không cần đăng nhập
+      Dùng API công khai Roblox • Proxy CORS để tránh lỗi fetch • Host trên GitHub Pages ok
     </div>
   </div>
-<script>
-  async function checkFollower() {
-    const input = document.getElementById("input").value.trim();
-    const resultDiv = document.getElementById("result");
 
-    if (!input) {
-      resultDiv.innerHTML = '<span class="error">Vui lòng nhập username hoặc UserID!</span>';
-      return;
+  <script>
+    const proxy = "https://corsproxy.io/?";
+
+    async function fetchWithProxy(url, options = {}) {
+      const fullUrl = proxy + encodeURIComponent(url);
+      return fetch(fullUrl, options);
     }
 
-    resultDiv.innerHTML = "Đang tải...";
+    async function checkFollower() {
+      const input = document.getElementById("input").value.trim();
+      const resultDiv = document.getElementById("result");
 
-    try {
-      let userId = input;
+      if (!input) {
+        resultDiv.innerHTML = '<span class="error">Vui lòng nhập username hoặc UserID!</span>';
+        return;
+      }
 
-      // Nếu là username → chuyển thành UserID
-      if (isNaN(input)) {
-        const usernameRes = await fetch("https://users.roproxy.com/v1/usernames/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Accept": "application/json" },
-          body: JSON.stringify({
-            usernames: [input],
-            excludeBannedUsers: true
-          })
-        });
+      resultDiv.innerHTML = '<span class="loading"></span>Đang tải thông tin...';
 
-        if (!usernameRes.ok) throw new Error(`Lỗi API username: ${usernameRes.status}`);
+      try {
+        let userId = input;
 
-        const usernameData = await usernameRes.json();
+        // Nếu input là username (không phải số) → chuyển thành UserID
+        if (isNaN(input)) {
+          const usernameUrl = "https://users.roblox.com/v1/usernames/users";
+          const usernameRes = await fetchWithProxy(usernameUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({
+              usernames: [input],
+              excludeBannedUsers: true
+            })
+          });
 
-        if (!usernameData.data || usernameData.data.length === 0) {
-          throw new Error("Không tìm thấy người dùng với username này");
+          if (!usernameRes.ok) {
+            throw new Error(`Lỗi API username: ${usernameRes.status} ${usernameRes.statusText}`);
+          }
+
+          const usernameData = await usernameRes.json();
+
+          if (!usernameData.data || usernameData.data.length === 0) {
+            throw new Error("Không tìm thấy người dùng với username này");
+          }
+
+          userId = usernameData.data[0].id;
         }
 
-        userId = usernameData.data[0].id;
+        // Lấy số follower
+        const followerUrl = `https://friends.roblox.com/v1/users/${userId}/followers/count`;
+        const followerRes = await fetchWithProxy(followerUrl);
+
+        if (!followerRes.ok) {
+          throw new Error(`Không lấy được follower count (status: ${followerRes.status})`);
+        }
+
+        const followerData = await followerRes.json();
+        const count = followerData.count || 0;
+
+        // Lấy thông tin user (displayName + username chính xác)
+        const userInfoUrl = `https://users.roblox.com/v1/users/${userId}`;
+        const userInfoRes = await fetchWithProxy(userInfoUrl);
+        let displayName = "";
+        let username = input;
+
+        if (userInfoRes.ok) {
+          const userInfo = await userInfoRes.json();
+          displayName = userInfo.displayName || userInfo.name || "";
+          username = userInfo.name || input;
+        }
+
+        // Hiển thị kết quả
+        resultDiv.innerHTML = `
+          <span class="success">Thành công!</span><br><br>
+          <strong>UserID:</strong> ${userId}<br>
+          ${displayName ? `<strong>Tên hiển thị:</strong> ${displayName}<br>` : ""}
+          <strong>Username:</strong> ${username}<br>
+          <strong>Số follower:</strong> <span style="color:#3fb950;font-size:1.5em;font-weight:bold;">${count.toLocaleString()}</span>
+        `;
+
+      } catch (err) {
+        resultDiv.innerHTML = `<span class="error">Lỗi: ${err.message || "Không xác định (kiểm tra console F12)"}</span><br><br>
+          Thử lại sau vài giây hoặc kiểm tra mạng/proxy.`;
+        console.error("Chi tiết lỗi:", err);
       }
-
-      // Lấy số follower (dùng roproxy để bypass CORS)
-      const followerRes = await fetch(`https://friends.roproxy.com/v1/users/${userId}/followers/count`);
-
-      if (!followerRes.ok) {
-        throw new Error(`Không thể lấy follower count (status: ${followerRes.status})`);
-      }
-
-      const followerData = await followerRes.json();
-      const count = followerData.count || 0;
-
-      // Lấy thông tin user (displayName, username)
-      const userInfoRes = await fetch(`https://users.roproxy.com/v1/users/${userId}`);
-      let displayName = "";
-      let username = input;
-      if (userInfoRes.ok) {
-        const userInfo = await userInfoRes.json();
-        displayName = userInfo.displayName || "";
-        username = userInfo.name || input;
-      }
-
-      resultDiv.innerHTML = `
-        <strong>UserID:</strong> ${userId}<br>
-        ${displayName ? `<strong>Tên hiển thị:</strong> ${displayName}<br>` : ""}
-        <strong>Username:</strong> ${username}<br>
-        <strong>Số follower:</strong> <span style="color:#00ff88;font-size:1.4em;">${count.toLocaleString()}</span>
-      `;
-
-    } catch (err) {
-      resultDiv.innerHTML = `<span class="error">Lỗi: ${err.message || err}</span>`;
     }
-  }
 
-  // Nhấn Enter để tìm
-  document.getElementById("input").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") checkFollower();
-  });
-</script>
-  
+    // Nhấn Enter để tìm
+    document.getElementById("input").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        checkFollower();
+      }
+    });
+  </script>
 
 </body>
 </html>
