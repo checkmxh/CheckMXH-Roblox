@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Check Follower Roblox - Thiện Tool</title>
+  <title>Roblox Profile Checker - Thiện Tool</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -18,7 +18,7 @@
       margin-bottom: 30px;
     }
     .container {
-      max-width: 500px;
+      max-width: 600px;
       margin: 0 auto;
       background: #161b22;
       padding: 30px;
@@ -52,23 +52,53 @@
     }
     #result {
       margin-top: 30px;
-      font-size: 1.2em;
+      font-size: 1.1em;
       line-height: 1.6;
-      min-height: 100px;
+      min-height: 200px;
+      text-align: left;
+    }
+    .profile-card {
+      background: #0d1117;
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #30363d;
+    }
+    .avatar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 3px solid #58a6ff;
+      object-fit: cover;
+      margin: 0 auto 15px;
+      display: block;
+    }
+    .full-avatar {
+      width: 300px;
+      max-width: 100%;
+      border-radius: 8px;
+      margin: 20px auto;
+      display: block;
     }
     .success { color: #3fb950; }
     .error { color: #f85149; font-weight: bold; }
     .loading {
       display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid #58a6ff;
-      border-top: 3px solid transparent;
+      width: 24px;
+      height: 24px;
+      border: 4px solid #58a6ff;
+      border-top: 4px solid transparent;
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin-right: 10px;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    a {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
     .info {
       margin-top: 40px;
       color: #8b949e;
@@ -79,15 +109,15 @@
 <body>
 
   <div class="container">
-    <h1>Check Số Follower Roblox</h1>
+    <h1>Roblox Profile Checker</h1>
     
     <input type="text" id="input" placeholder="Nhập Username hoặc UserID (ví dụ: Builderman hoặc 1)" />
-    <button onclick="checkFollower()">Kiểm tra ngay</button>
+    <button onclick="checkProfile()">Xem Profile</button>
     
     <div id="result"></div>
     
     <div class="info">
-      Dùng API công khai Roblox • Proxy CORS để tránh lỗi fetch • Host trên GitHub Pages ok
+      Dùng API công khai Roblox • Proxy CORS • Avatar + Description + Join Date + Follow stats
     </div>
   </div>
 
@@ -96,10 +126,12 @@
 
     async function fetchWithProxy(url, options = {}) {
       const fullUrl = proxy + encodeURIComponent(url);
-      return fetch(fullUrl, options);
+      const res = await fetch(fullUrl, options);
+      if (!res.ok) throw new Error(`Fetch lỗi: ${res.status} - ${res.statusText}`);
+      return res;
     }
 
-    async function checkFollower() {
+    async function checkProfile() {
       const input = document.getElementById("input").value.trim();
       const resultDiv = document.getElementById("result");
 
@@ -108,80 +140,93 @@
         return;
       }
 
-      resultDiv.innerHTML = '<span class="loading"></span>Đang tải thông tin...';
+      resultDiv.innerHTML = '<span class="loading"></span> Đang tải profile...';
 
       try {
         let userId = input;
 
-        // Nếu input là username (không phải số) → chuyển thành UserID
+        // Nếu là username → lấy UserID
         if (isNaN(input)) {
           const usernameUrl = "https://users.roblox.com/v1/usernames/users";
           const usernameRes = await fetchWithProxy(usernameUrl, {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Accept": "application/json" },
-            body: JSON.stringify({
-              usernames: [input],
-              excludeBannedUsers: true
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ usernames: [input], excludeBannedUsers: true })
           });
-
-          if (!usernameRes.ok) {
-            throw new Error(`Lỗi API username: ${usernameRes.status} ${usernameRes.statusText}`);
-          }
-
-          const usernameData = await usernameRes.json();
-
-          if (!usernameData.data || usernameData.data.length === 0) {
-            throw new Error("Không tìm thấy người dùng với username này");
-          }
-
-          userId = usernameData.data[0].id;
+          const data = await usernameRes.json();
+          if (!data.data || data.data.length === 0) throw new Error("Không tìm thấy username này");
+          userId = data.data[0].id;
         }
 
-        // Lấy số follower
-        const followerUrl = `https://friends.roblox.com/v1/users/${userId}/followers/count`;
-        const followerRes = await fetchWithProxy(followerUrl);
+        // Lấy info chính (displayName, name, description, created)
+        const userUrl = `https://users.roblox.com/v1/users/${userId}`;
+        const userRes = await fetchWithProxy(userUrl);
+        const user = await userRes.json();
 
-        if (!followerRes.ok) {
-          throw new Error(`Không lấy được follower count (status: ${followerRes.status})`);
-        }
+        const displayName = user.displayName || user.name || "Unknown";
+        const username = user.name || input;
+        const description = user.description || "Không có mô tả";
+        const created = new Date(user.created).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-        const followerData = await followerRes.json();
-        const count = followerData.count || 0;
+        // Lấy counts: followers, following, friends
+        const followersUrl = `https://friends.roblox.com/v1/users/${userId}/followers/count`;
+        const followingUrl = `https://friends.roblox.com/v1/users/${userId}/followings/count`;
+        const friendsUrl = `https://friends.roblox.com/v1/users/${userId}/friends/count`;
 
-        // Lấy thông tin user (displayName + username chính xác)
-        const userInfoUrl = `https://users.roblox.com/v1/users/${userId}`;
-        const userInfoRes = await fetchWithProxy(userInfoUrl);
-        let displayName = "";
-        let username = input;
+        const [folRes, fingRes, friRes] = await Promise.all([
+          fetchWithProxy(followersUrl),
+          fetchWithProxy(followingUrl),
+          fetchWithProxy(friendsUrl)
+        ]);
 
-        if (userInfoRes.ok) {
-          const userInfo = await userInfoRes.json();
-          displayName = userInfo.displayName || userInfo.name || "";
-          username = userInfo.name || input;
-        }
+        const followers = (await folRes.json()).count || 0;
+        const following = (await fingRes.json()).count || 0;
+        const friends = (await friRes.json()).count || 0;
 
-        // Hiển thị kết quả
-        resultDiv.innerHTML = `
-          <span class="success">Thành công!</span><br><br>
-          <strong>UserID:</strong> ${userId}<br>
-          ${displayName ? `<strong>Tên hiển thị:</strong> ${displayName}<br>` : ""}
-          <strong>Username:</strong> ${username}<br>
-          <strong>Số follower:</strong> <span style="color:#3fb950;font-size:1.5em;font-weight:bold;">${count.toLocaleString()}</span>
+        // Avatar thumbnails
+        const headshotUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=true`;
+        const bodyUrl = `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png`;
+
+        const hsRes = await fetchWithProxy(headshotUrl);
+        const bodyRes = await fetchWithProxy(bodyUrl);
+
+        const hsData = await hsRes.json();
+        const bodyData = await bodyRes.json();
+
+        const headshotImg = hsData.data?.[0]?.imageUrl || "https://via.placeholder.com/420?text=Avatar+Not+Found";
+        const bodyImg = bodyData.data?.[0]?.imageUrl || "";
+
+        // Hiển thị profile
+        let html = `
+          <div class="profile-card">
+            <img src="${headshotImg}" alt="Avatar Headshot" class="avatar">
+            <h2><a href="https://www.roblox.com/users/${userId}/profile" target="_blank">${displayName}</a></h2>
+            <p><strong>Username:</strong> @${username}</p>
+            <p><strong>UserID:</strong> ${userId}</p>
+            <p><strong>Ngày tham gia:</strong> ${created}</p>
+            <p><strong>Mô tả:</strong><br>${description.replace(/\n/g, '<br>')}</p>
+            <hr style="border-color:#30363d;">
+            <p><strong>Followers:</strong> ${followers.toLocaleString()}</p>
+            <p><strong>Following:</strong> ${following.toLocaleString()}</p>
+            <p><strong>Friends:</strong> ${friends.toLocaleString()}</p>
+          </div>
         `;
 
+        if (bodyImg) {
+          html += `<img src="${bodyImg}" alt="Full Body Avatar" class="full-avatar">`;
+        }
+
+        resultDiv.innerHTML = html;
+
       } catch (err) {
-        resultDiv.innerHTML = `<span class="error">Lỗi: ${err.message || "Không xác định (kiểm tra console F12)"}</span><br><br>
-          Thử lại sau vài giây hoặc kiểm tra mạng/proxy.`;
-        console.error("Chi tiết lỗi:", err);
+        resultDiv.innerHTML = `<span class="error">Lỗi: ${err.message || "Không xác định (F12 xem console)"}</span><br><br>
+          Có thể do rate limit, thử lại sau 10s hoặc kiểm tra input.`;
+        console.error(err);
       }
     }
 
-    // Nhấn Enter để tìm
     document.getElementById("input").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        checkFollower();
-      }
+      if (e.key === "Enter") checkProfile();
     });
   </script>
 
