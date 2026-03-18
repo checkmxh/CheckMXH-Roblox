@@ -13,10 +13,7 @@
       padding: 40px 20px;
       text-align: center;
     }
-    h1 {
-      color: #58a6ff;
-      margin-bottom: 30px;
-    }
+    h1 { color: #58a6ff; margin-bottom: 30px; }
     .container {
       max-width: 600px;
       margin: 0 auto;
@@ -47,9 +44,7 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    button:hover {
-      background: #2ea043;
-    }
+    button:hover { background: #2ea043; }
     #result {
       margin-top: 30px;
       font-size: 1.1em;
@@ -92,18 +87,9 @@
       margin-right: 10px;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    a {
-      color: #58a6ff;
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
-    .info {
-      margin-top: 40px;
-      color: #8b949e;
-      font-size: 0.9em;
-    }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .info { margin-top: 40px; color: #8b949e; font-size: 0.9em; }
   </style>
 </head>
 <body>
@@ -117,7 +103,7 @@
     <div id="result"></div>
     
     <div class="info">
-      Dùng API công khai Roblox • Proxy CORS • Avatar + Description + Join Date + Follow stats
+      Avatar + Tên + Mô tả + Ngày join + Link profile • Friends count tạm bỏ do Roblox chặn 403 (2026)
     </div>
   </div>
 
@@ -158,7 +144,7 @@
           userId = data.data[0].id;
         }
 
-        // Lấy info chính (displayName, name, description, created)
+        // Lấy info user
         const userUrl = `https://users.roblox.com/v1/users/${userId}`;
         const userRes = await fetchWithProxy(userUrl);
         const user = await userRes.json();
@@ -168,22 +154,7 @@
         const description = user.description || "Không có mô tả";
         const created = new Date(user.created).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-        // Lấy counts: followers, following, friends
-        const followersUrl = `https://friends.roblox.com/v1/users/${userId}/followers/count`;
-        const followingUrl = `https://friends.roblox.com/v1/users/${userId}/followings/count`;
-        const friendsUrl = `https://friends.roblox.com/v1/users/${userId}/friends/count`;
-
-        const [folRes, fingRes, friRes] = await Promise.all([
-          fetchWithProxy(followersUrl),
-          fetchWithProxy(followingUrl),
-          fetchWithProxy(friendsUrl)
-        ]);
-
-        const followers = (await folRes.json()).count || 0;
-        const following = (await fingRes.json()).count || 0;
-        const friends = (await friRes.json()).count || 0;
-
-        // Avatar thumbnails
+        // Avatar
         const headshotUrl = `https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${userId}&size=420x420&format=Png&isCircular=true`;
         const bodyUrl = `https://thumbnails.roblox.com/v1/users/avatar?userIds=${userId}&size=720x720&format=Png`;
 
@@ -196,7 +167,7 @@
         const headshotImg = hsData.data?.[0]?.imageUrl || "https://via.placeholder.com/420?text=Avatar+Not+Found";
         const bodyImg = bodyData.data?.[0]?.imageUrl || "";
 
-        // Hiển thị profile
+        // Hiển thị
         let html = `
           <div class="profile-card">
             <img src="${headshotImg}" alt="Avatar Headshot" class="avatar">
@@ -205,10 +176,6 @@
             <p><strong>UserID:</strong> ${userId}</p>
             <p><strong>Ngày tham gia:</strong> ${created}</p>
             <p><strong>Mô tả:</strong><br>${description.replace(/\n/g, '<br>')}</p>
-            <hr style="border-color:#30363d;">
-            <p><strong>Followers:</strong> ${followers.toLocaleString()}</p>
-            <p><strong>Following:</strong> ${following.toLocaleString()}</p>
-            <p><strong>Friends:</strong> ${friends.toLocaleString()}</p>
           </div>
         `;
 
@@ -220,7 +187,7 @@
 
       } catch (err) {
         resultDiv.innerHTML = `<span class="error">Lỗi: ${err.message || "Không xác định (F12 xem console)"}</span><br><br>
-          Có thể do rate limit, thử lại sau 10s hoặc kiểm tra input.`;
+          Nếu 403 → do Roblox chặn friends API public. Thử input khác hoặc chờ update proxy.`;
         console.error(err);
       }
     }
